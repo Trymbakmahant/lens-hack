@@ -1,5 +1,6 @@
 const GAMES = {};
 const NB_PLAYERS = 3;
+const GAME_DURATION = 60 * 5; // 5 minutes
 
 async function getState(groveId) {
   const url = "https://api.grove.storage/" + groveId;
@@ -51,14 +52,15 @@ async function postGame(gameId, groveId, randomUuid) {
   if (!player[2]) {
     player[2] = true; // set to true for commited
     if (players.map(p => p[2]).every(p => p)) {
-      const revealTime = Math.floor(new Date()/1000) + 60 * 5; // 5 minutes
+      const revealTime = Math.floor(new Date()/1000) + GAME_DURATION;
       GAMES[gameId].revealTime = revealTime;
-      return revealTime; // TODO set
+      return revealTime;
     } else {
-      return;
+      return; // TODO ok
     }
   }
 
+  throw new Error('not implemented');
 }
 
 (async () => {
