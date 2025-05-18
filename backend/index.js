@@ -11,7 +11,7 @@ async function getState(groveId) {
 
 
 // returns
-// - random uuid if player not in the game, not commited - grove file checked for state 0
+// - random uuid if player not in the game - grove file checked for state 0, ie not commited
 // - isWherewolf and revealTime (if set) before reveal time - if player passes correct random uuid and grove file new state is 1
 // - grove id of wherewolf after reveal time - if player passes correct random uuid
 // TODO maybe return lensId in last case, need grove file wih format { state, lensId }
