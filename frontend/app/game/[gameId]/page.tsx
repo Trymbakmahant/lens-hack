@@ -72,29 +72,45 @@ export default function GamePage() {
   }
 
   return (
-    <div className="game-container">
-      <GameBoard players={players} roles={{}} timeLeft={timeLeft} />
+    <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Game Board Section */}
+        <div className="lg:col-span-2">
+          <div className="bg-gray-800 rounded-lg shadow-xl p-6 mb-6">
+            <GameBoard players={players} roles={{}} timeLeft={timeLeft} />
+          </div>
+        </div>
 
-      {currentPhase === "day" ? (
-        <VotingPanel
-          players={players}
-          onVote={handleVote}
-          timeLeft={timeLeft}
-        />
-      ) : (
-        <NightActions
-          role="werewolf"
-          players={players}
-          onAction={handleNightAction}
-          timeLeft={timeLeft}
-        />
-      )}
+        {/* Right Sidebar */}
+        <div className="space-y-6">
+          {/* Phase Actions */}
+          <div className="bg-gray-800 rounded-lg shadow-xl p-6">
+            {currentPhase === "day" ? (
+              <VotingPanel
+                players={players}
+                onVote={handleVote}
+                timeLeft={timeLeft}
+              />
+            ) : (
+              <NightActions
+                role="werewolf"
+                players={players}
+                onAction={handleNightAction}
+                timeLeft={timeLeft}
+              />
+            )}
+          </div>
 
-      <ChatBox
-        messages={messages}
-        onSendMessage={handleChatMessage}
-        isNightPhase={currentPhase === "night"}
-      />
+          {/* Chat Section */}
+          <div className="bg-gray-800 rounded-lg shadow-xl p-6">
+            <ChatBox
+              messages={messages}
+              onSendMessage={handleChatMessage}
+              isNightPhase={currentPhase === "night"}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
