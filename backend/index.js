@@ -9,6 +9,12 @@ async function getState(groveId) {
   return data?.state;
 }
 
+
+// returns
+// random uuid if player not in the game, not commited - grove file checked for state 0
+// isWherewolf and revealTime (if set) before reveal time - if player passes correct random uuid and grove file new state is 1
+// grove id of wherewolf after reveal time - if player passes correct random uuid
+// TODO grove file wih format { state, lensId }, maybe return lensId in last case
 async function postGame(gameId, groveId, randomUuid) {
   if (!groveId) throw new Error('groveId is required')
   if (typeof gameId !== 'string' || gameId.length !== 36) throw new Error('gameId is required')
@@ -21,14 +27,15 @@ async function postGame(gameId, groveId, randomUuid) {
     const newUuid = crypto.randomUUID();
     GAMES[gameId] = {
       players: [[groveId, newUuid, false]], // false for not commited,
-      wherewolf: Math.floor(Math.random() * NB_PLAYERS),
+      wherewolfIndex: Math.floor(Math.random() * NB_PLAYERS),
     }
-    console.log('GAMES', GAMES[gameId]);
-    return newUuid;
+
+    return { newUuid };
   }
 
   const players = GAMES[gameId].players;
-  const player = players.find(player => player[0] === groveId);
+  const playerIndex = players.findIndex(player => player[0] === groveId);
+  const player = players[playerIndex];
   if (!player) {
     if (players.length >= NB_PLAYERS) throw new Error('game is full');
 
@@ -46,21 +53,18 @@ async function postGame(gameId, groveId, randomUuid) {
     players.map(p => p[2]).every(p => p) &&
     Math.floor(new Date()/1000) > GAMES[gameId].revealTime
   ) {
-    return players[GAMES[gameId].wherewolf][0];
+    const wherewolfGroveId = players[GAMES[gameId].wherewolfIndex][0];
+    return { wherewolfGroveId };
   }
 
-  if (!player[2]) {
-    player[2] = true; // set to true for commited
-    if (players.map(p => p[2]).every(p => p)) {
-      const revealTime = Math.floor(new Date()/1000) + GAME_DURATION;
-      GAMES[gameId].revealTime = revealTime;
-      return revealTime;
-    } else {
-      return; // TODO ok
-    }
+  if (!player[2]) player[2] = true; // set to true for commited
+
+  if (players.map(p => p[2]).every(p => p)) {
+    GAMES[gameId].revealTime = Math.floor(new Date()/1000) + GAME_DURATION;
   }
 
-  throw new Error('not implemented');
+  const isWherewolf = playerIndex === GAMES[gameId].wherewolfIndex;
+  return  { isWherewolf, revealTime: GAMES[gameId].revealTime };
 }
 
 (async () => {
