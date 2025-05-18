@@ -10,6 +10,12 @@
 
 export default {
 	async fetch(request, env, ctx) {
-		return new Response('Hello World!');
+    const allKeys = await env.GAMES.list();
+		// return a Workers response
+    return new Response(
+      JSON.stringify({
+        allKeys: allKeys,
+      }),
+    );
 	},
 };
