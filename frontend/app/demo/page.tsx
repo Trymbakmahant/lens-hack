@@ -7,13 +7,29 @@ import ChatBox from "@/components/ChatBox";
 import NightActions from "@/components/NightActions";
 import WalletConnect from "@/components/WalletConnect";
 
+interface Player {
+  id: string;
+  name: string;
+  role: string;
+  isAlive: boolean;
+  votes?: number;
+}
+
+interface Message {
+  id: string;
+  sender: string;
+  content: string;
+  timestamp: Date;
+  role?: string;
+}
+
 // Demo data
-const DEMO_PLAYERS = [
-  { id: "1", name: "Alice", role: "werewolf", isAlive: true },
-  { id: "2", name: "Bob", role: "villager", isAlive: true },
-  { id: "3", name: "Charlie", role: "detective", isAlive: true },
-  { id: "4", name: "Dave", role: "villager", isAlive: true },
-  { id: "5", name: "Eve", role: "werewolf", isAlive: true },
+const DEMO_PLAYERS: Player[] = [
+  { id: "1", name: "Alice", role: "werewolf", isAlive: true, votes: 0 },
+  { id: "2", name: "Bob", role: "villager", isAlive: true, votes: 0 },
+  { id: "3", name: "Charlie", role: "detective", isAlive: true, votes: 0 },
+  { id: "4", name: "Dave", role: "villager", isAlive: true, votes: 0 },
+  { id: "5", name: "Eve", role: "werewolf", isAlive: true, votes: 0 },
 ];
 
 const DEMO_ROLES = {
@@ -27,9 +43,12 @@ const DEMO_ROLES = {
 export default function DemoPage() {
   const [phase, setPhase] = useState<"day" | "night">("day");
   const [timeLeft, setTimeLeft] = useState(60);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [players, setPlayers] = useState(DEMO_PLAYERS);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [players, setPlayers] = useState<Player[]>(DEMO_PLAYERS);
   const [selectedRole, setSelectedRole] = useState("werewolf");
+  const [showRules, setShowRules] = useState(false);
+  const [gameStatus, setGameStatus] = useState<"playing" | "ended">("playing");
+  const [winner, setWinner] = useState<string | null>(null);
 
   // Simulate timer
   useEffect(() => {
@@ -46,28 +65,44 @@ export default function DemoPage() {
     return () => clearInterval(timer);
   }, []);
 
+  // Check for game end conditions
+  useEffect(() => {
+    const alivePlayers = players.filter((p) => p.isAlive);
+    const aliveWerewolves = alivePlayers.filter((p) => p.role === "werewolf");
+    const aliveVillagers = alivePlayers.filter((p) => p.role !== "werewolf");
+
+    if (aliveWerewolves.length === 0) {
+      setGameStatus("ended");
+      setWinner("Villagers");
+    } else if (aliveWerewolves.length >= aliveVillagers.length) {
+      setGameStatus("ended");
+      setWinner("Werewolves");
+    }
+  }, [players]);
+
   const handleVote = (playerId: string) => {
     const updatedPlayers = players.map((player) =>
-      player.id === playerId ? { ...player, isAlive: false } : player
+      player.id === playerId
+        ? { ...player, votes: (player.votes || 0) + 1 }
+        : player
     );
     setPlayers(updatedPlayers);
     addMessage({
       id: Date.now().toString(),
       sender: "System",
-      content: `${
+      content: `A vote was cast for ${
         players.find((p) => p.id === playerId)?.name
-      } was eliminated!`,
+      }`,
       timestamp: new Date(),
     });
   };
 
   const handleNightAction = (targetId: string) => {
+    const targetPlayer = players.find((p) => p.id === targetId);
     addMessage({
       id: Date.now().toString(),
       sender: "System",
-      content: `${selectedRole} performed their action on ${
-        players.find((p) => p.id === targetId)?.name
-      }`,
+      content: `${selectedRole} performed their action on ${targetPlayer?.name}`,
       timestamp: new Date(),
     });
   };
@@ -78,30 +113,67 @@ export default function DemoPage() {
       sender: "You",
       content,
       timestamp: new Date(),
+      role: selectedRole,
     });
   };
 
-  const addMessage = (message: any) => {
+  const addMessage = (message: Message) => {
     setMessages((prev) => [...prev, message]);
   };
 
+  const resetGame = () => {
+    setPlayers(DEMO_PLAYERS);
+    setMessages([]);
+    setPhase("day");
+    setTimeLeft(60);
+    setGameStatus("playing");
+    setWinner(null);
+  };
+
   return (
-    <div className="demo-container p-4">
-      <div className="controls mb-4 p-4 bg-gray-100 rounded">
-        <h2 className="text-xl font-bold mb-2">Demo Controls</h2>
-        <div className="flex gap-4">
+    <div className="demo-container p-4 max-w-7xl mx-auto">
+      <div className="controls mb-4 p-4 bg-gray-800 rounded-lg shadow-lg">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold text-white">Demo Controls</h2>
+          <button
+            onClick={() => setShowRules(!showRules)}
+            className="px-4 py-2 bg-gray-700 text-white rounded hover:bg-gray-600 transition-colors"
+          >
+            {showRules ? "Hide Rules" : "Show Rules"}
+          </button>
+        </div>
+
+        {showRules && (
+          <div className="mb-4 p-4 bg-gray-700 rounded-lg">
+            <h3 className="text-lg font-semibold text-white mb-2">
+              Game Rules
+            </h3>
+            <ul className="list-disc list-inside text-gray-300 space-y-2">
+              <li>Day Phase: Players discuss and vote to eliminate a player</li>
+              <li>Night Phase: Special roles perform their actions</li>
+              <li>Werewolves win when they equal or outnumber villagers</li>
+              <li>Villagers win when all werewolves are eliminated</li>
+            </ul>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-4">
           <button
             onClick={() => setPhase("day")}
-            className={`px-4 py-2 rounded ${
-              phase === "day" ? "bg-blue-500 text-white" : "bg-gray-200"
+            className={`px-4 py-2 rounded transition-colors ${
+              phase === "day"
+                ? "bg-blue-500 text-white"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
             }`}
           >
             Day Phase
           </button>
           <button
             onClick={() => setPhase("night")}
-            className={`px-4 py-2 rounded ${
-              phase === "night" ? "bg-blue-500 text-white" : "bg-gray-200"
+            className={`px-4 py-2 rounded transition-colors ${
+              phase === "night"
+                ? "bg-blue-500 text-white"
+                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
             }`}
           >
             Night Phase
@@ -109,14 +181,29 @@ export default function DemoPage() {
           <select
             value={selectedRole}
             onChange={(e) => setSelectedRole(e.target.value)}
-            className="px-4 py-2 rounded border"
+            className="px-4 py-2 rounded bg-gray-700 text-white border border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="werewolf">Werewolf</option>
             <option value="detective">Detective</option>
             <option value="villager">Villager</option>
           </select>
+          {gameStatus === "ended" && (
+            <button
+              onClick={resetGame}
+              className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+            >
+              New Game
+            </button>
+          )}
         </div>
       </div>
+
+      {gameStatus === "ended" && (
+        <div className="mb-4 p-4 bg-gray-800 rounded-lg text-center">
+          <h2 className="text-2xl font-bold text-white mb-2">Game Over!</h2>
+          <p className="text-xl text-gray-300">The {winner} have won!</p>
+        </div>
+      )}
 
       <div className="wallet-section mb-4">
         <WalletConnect
@@ -126,7 +213,12 @@ export default function DemoPage() {
 
       <div className="game-layout grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="game-board-section">
-          <GameBoard players={players} roles={DEMO_ROLES} timeLeft={timeLeft} />
+          <GameBoard
+            players={players}
+            roles={DEMO_ROLES}
+            timeLeft={timeLeft}
+            phase={phase}
+          />
         </div>
 
         <div className="game-actions-section">
@@ -151,6 +243,7 @@ export default function DemoPage() {
             messages={messages}
             onSendMessage={handleChatMessage}
             isNightPhase={phase === "night"}
+            currentRole={selectedRole}
           />
         </div>
       </div>

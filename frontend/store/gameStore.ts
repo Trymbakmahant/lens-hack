@@ -13,13 +13,13 @@ interface GameState {
   currentPhase: "day" | "night";
   currentRound: number;
   timeLeft: number;
-  messages: any[];
+  messages: string[];
   setGameId: (id: string) => void;
   setPlayers: (players: Player[]) => void;
   setPhase: (phase: "day" | "night") => void;
   setRound: (round: number) => void;
   setTimeLeft: (time: number) => void;
-  addMessage: (message: any) => void;
+  addMessage: (message: string) => void;
   resetGame: () => void;
 }
 
