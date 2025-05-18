@@ -71,5 +71,5 @@ async function postGame(gameId, groveId, randomUuid) {
 (async () => {
   const gameId = '8370814a0f6f3402129eb775d3379498c42d';
   const groveId = 'a32b6580bc2b869e6ab855a5cf35062499d1e66422bd7f41ea8794d78b01c114';
-  await postGame(gameId, groveId);
+  await postGame(gameId, groveId, null);
 })();
