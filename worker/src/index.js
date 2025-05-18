@@ -85,9 +85,10 @@ async function postGame(GAMES, gameId, groveId, uuid) {
 export default {
 	async fetch(request, env, ctx) {
     if (request.method !== 'POST') {
-      // return a Workers response
+      const message = 'Method not allowed';
       return new Response(
-        JSON.stringify({ status: 405 })
+        JSON.stringify({ message }),
+        { status: 405 }
       );
     }
 
@@ -100,10 +101,9 @@ export default {
       );
     } catch (e) {
       const message = e.message || 'Unknown error';
-      console.error({ message });
-      // return a Workers response
       return new Response(
-        JSON.stringify({ message, status: 400 })
+        JSON.stringify({ message }),
+        { status: 400}
       );
     }
 	},
