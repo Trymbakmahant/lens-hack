@@ -16,7 +16,7 @@ async function getState(groveId) {
 // - grove id of wherewolf after reveal time - if player passes correct random uuid
 // TODO maybe return lensId in last case, need grove file wih format { state, lensId }
 // TODO maybe open game result if random uuid is not passed/correct after reveal time
-async function postGame(gameId, groveId, randomUuid) {
+async function postGame(gameId, groveId, uuid) {
   if (!groveId) throw new Error('groveId is required')
   if (typeof gameId !== 'string' || gameId.length !== 36) throw new Error('gameId is required')
 
@@ -30,7 +30,7 @@ async function postGame(gameId, groveId, randomUuid) {
       wherewolfIndex: Math.floor(Math.random() * NB_PLAYERS),
     }
 
-    return { newUuid };
+    return { uuid: newUuid };
   }
 
   const players = GAMES[gameId].players;
@@ -44,10 +44,10 @@ async function postGame(gameId, groveId, randomUuid) {
 
     const newUuid = crypto.randomUUID();
     players.push([groveId, newUuid, false]); // false for not commited
-    return newUuid;
+    return { uuid: newUuid };
   }
 
-  if (player[1] !== randomUuid) throw new Error('invalid uuid');
+  if (player[1] !== uuid) throw new Error('invalid uuid');
   
   if (
     players.map(p => p[2]).every(p => p) &&
