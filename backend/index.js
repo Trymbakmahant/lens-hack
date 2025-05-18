@@ -11,10 +11,11 @@ async function getState(groveId) {
 
 
 // returns
-// random uuid if player not in the game, not commited - grove file checked for state 0
-// isWherewolf and revealTime (if set) before reveal time - if player passes correct random uuid and grove file new state is 1
-// grove id of wherewolf after reveal time - if player passes correct random uuid
-// TODO grove file wih format { state, lensId }, maybe return lensId in last case
+// - random uuid if player not in the game, not commited - grove file checked for state 0
+// - isWherewolf and revealTime (if set) before reveal time - if player passes correct random uuid and grove file new state is 1
+// - grove id of wherewolf after reveal time - if player passes correct random uuid
+// TODO maybe return lensId in last case, need grove file wih format { state, lensId }
+// TODO maybe open game result if random uuid is not passed/correct after reveal time
 async function postGame(gameId, groveId, randomUuid) {
   if (!groveId) throw new Error('groveId is required')
   if (typeof gameId !== 'string' || gameId.length !== 36) throw new Error('gameId is required')
