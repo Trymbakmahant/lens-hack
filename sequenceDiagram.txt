@@ -1,0 +1,25 @@
+sequenceDiagram
+    actor Player
+    participant Frontend
+    participant Wallet
+    participant API
+    participant Grove
+
+    Player->>Frontend: Open
+    Frontend->>Wallet: Login on lens chain
+    Wallet->Player: Click login
+    Wallet->>Frontend: Address
+    Player->Frontend: Join game
+    Frontend->>Grove: Create grove file with {state: 0} and ACL from address
+    Grove->>Frontend: grove id
+    Frontend->>API: POST game id, grove id
+    API->>Frontend: Return uuid
+    Frontend->>Wallet: Open wallet for updating grove file
+    Wallet->Player: Click sign
+    Frontend->>Grove: Update grove file { state: 1 }
+    Frontend->>API: POST game id, grove id, uuid
+    API->Grove: check { state: 1 } for grove file
+    API->>Frontend: ireturn s wherewolf
+    Note over Player,Grove: Chat on lens group and vote by message during 5mn
+    Frontend->>API: POST game id, grove id, uuid
+    API->>Frontend: return wherewolf id
