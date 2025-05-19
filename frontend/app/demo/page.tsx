@@ -5,7 +5,6 @@ import GameBoard from "@/components/GameBoard";
 import VotingPanel from "@/components/VotingPanel";
 import ChatBox from "@/components/ChatBox";
 import NightActions from "@/components/NightActions";
-import WalletConnect from "@/components/WalletConnect";
 
 interface Player {
   id: string;
@@ -205,11 +204,7 @@ export default function DemoPage() {
         </div>
       )}
 
-      <div className="wallet-section mb-4">
-        <WalletConnect
-          onConnect={(address) => console.log("Connected:", address)}
-        />
-      </div>
+      <div className="wallet-section mb-4">here gose wallet</div>
 
       <div className="game-layout grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="game-board-section">

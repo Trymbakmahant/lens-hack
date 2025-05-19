@@ -8,6 +8,7 @@ import ChatBox from "@/components/ChatBox";
 import NightActions from "@/components/NightActions";
 import { useGameSocket } from "@/hooks/useGameSocket";
 import { useGameStore } from "@/store/gameStore";
+import { ConnectKitButton } from "connectkit";
 
 export default function GamePage() {
   const params = useParams();
@@ -73,41 +74,57 @@ export default function GamePage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Game Board Section */}
-        <div className="lg:col-span-2">
-          <div className="bg-gray-800 rounded-lg shadow-xl p-6 mb-6">
-            <GameBoard players={players} roles={{}} timeLeft={timeLeft} />
-          </div>
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-end mb-6">
+          <ConnectKitButton />
         </div>
-
-        {/* Right Sidebar */}
-        <div className="space-y-6">
-          {/* Phase Actions */}
-          <div className="bg-gray-800 rounded-lg shadow-xl p-6">
-            {currentPhase === "day" ? (
-              <VotingPanel
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Game Board Section */}
+          <div className="lg:col-span-2">
+            <div className="bg-gray-800 rounded-lg shadow-xl p-6 mb-6">
+              <GameBoard
                 players={players}
-                onVote={handleVote}
+                roles={{}}
                 timeLeft={timeLeft}
+                phase={currentPhase}
               />
-            ) : (
-              <NightActions
-                role="werewolf"
-                players={players}
-                onAction={handleNightAction}
-                timeLeft={timeLeft}
-              />
-            )}
+            </div>
           </div>
 
-          {/* Chat Section */}
-          <div className="bg-gray-800 rounded-lg shadow-xl p-6">
-            <ChatBox
-              messages={messages}
-              onSendMessage={handleChatMessage}
-              isNightPhase={currentPhase === "night"}
-            />
+          {/* Right Sidebar */}
+          <div className="space-y-6">
+            {/* Phase Actions */}
+            <div className="bg-gray-800 rounded-lg shadow-xl p-6">
+              {currentPhase === "day" ? (
+                <VotingPanel
+                  players={players}
+                  onVote={handleVote}
+                  timeLeft={timeLeft}
+                />
+              ) : (
+                <NightActions
+                  role="werewolf"
+                  players={players}
+                  onAction={handleNightAction}
+                  timeLeft={timeLeft}
+                />
+              )}
+            </div>
+
+            {/* Chat Section */}
+            <div className="bg-gray-800 rounded-lg shadow-xl p-6">
+              <ChatBox
+                messages={messages.map((msg) => ({
+                  id: Date.now().toString(),
+                  sender: "Player",
+                  content: msg,
+                  timestamp: new Date(),
+                }))}
+                onSendMessage={handleChatMessage}
+                isNightPhase={currentPhase === "night"}
+                currentRole="villager"
+              />
+            </div>
           </div>
         </div>
       </div>

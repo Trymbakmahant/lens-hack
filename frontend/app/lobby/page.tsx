@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import WalletConnect from "@/components/WalletConnect";
+import { ConnectKitButton } from "connectkit";
 
 // Mock data for public games - replace with actual data from your backend
 const mockPublicGames = [
@@ -68,10 +68,8 @@ export default function LobbyPage() {
           Game Lobby
         </h1>
 
-        <div className="wallet-section mb-8">
-          <WalletConnect
-            onConnect={(address) => console.log("Connected:", address)}
-          />
+        <div className="wallet-section mb-8 flex justify-center">
+          <ConnectKitButton />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

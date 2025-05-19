@@ -1,5 +1,30 @@
 import { useState, useEffect } from "react";
 
+type EthereumRequestMethod =
+  | "eth_accounts"
+  | "eth_requestAccounts"
+  | "eth_getBalance";
+type EthereumEvent = "accountsChanged" | "chainChanged";
+
+declare global {
+  interface Window {
+    ethereum?: {
+      request: (args: {
+        method: EthereumRequestMethod;
+        params?: string[];
+      }) => Promise<string[]>;
+      on: (
+        event: EthereumEvent,
+        callback: (accounts: string[]) => void
+      ) => void;
+      removeListener: (
+        event: EthereumEvent,
+        callback: (accounts: string[]) => void
+      ) => void;
+    };
+  }
+}
+
 interface ContractState {
   isConnected: boolean;
   address: string | null;
@@ -32,11 +57,12 @@ export const useBlockchain = (): ContractState => {
             setState({
               isConnected: true,
               address: accounts[0],
-              balance: balance,
+              balance: balance[0],
               error: null,
             });
           }
         } catch (error) {
+          console.error("error", error);
           setState((prev) => ({
             ...prev,
             error: "Failed to connect to wallet",
