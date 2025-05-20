@@ -1,6 +1,6 @@
 # Wherewolf for Lens Spring hackathon
 
-## Lens primitives used
+## Lens components used
 - Grove for storage of some files
 - Lens chain for messaging
 
@@ -44,10 +44,10 @@ The main flow of the application is shown in the following sequence diagram:
 
 In the `worker` directory, another sequence diagram shows in more details the cloud function implememtation details.
 
-## Extension for possible future developments
+## Possible future developments
 Beyond extending the game to more players, our main focus would be on the decentralization of the system
 1. Implement onchain VRF.
 
-2. Use encryption techniques to hide palyer roles and
-zero-knowledge proofs to allow players to prove cerain statements about their role without revealing the roles themselves.
+2. Use encryption techniques to hide player roles and
+zero-knowledge proofs to allow players to prove certain statements about their role without revealing the roles themselves.
 
