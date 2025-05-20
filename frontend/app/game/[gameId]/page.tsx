@@ -1,131 +1,147 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useParams } from "next/navigation";
-import GameBoard from "@/components/GameBoard";
-import VotingPanel from "@/components/VotingPanel";
-import ChatBox from "@/components/ChatBox";
-import NightActions from "@/components/NightActions";
-import { useGameSocket } from "@/hooks/useGameSocket";
+import React, { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { useAccount } from "wagmi";
 import { useGameStore } from "@/store/gameStore";
-import { ConnectKitButton } from "connectkit";
 
-export default function GamePage() {
+export default function GameLobby() {
   const params = useParams();
+  const router = useRouter();
+  const { address } = useAccount();
   const gameId = params.gameId as string;
-  const { isConnected, sendMessage, lastMessage, error } =
-    useGameSocket(gameId);
-  const {
-    players,
-    currentPhase,
-    timeLeft,
-    messages,
-    setPlayers,
-    setPhase,
-    setTimeLeft,
-    addMessage,
-  } = useGameStore();
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { phase, players, yourRole, setPhase, setPlayers, setYourRole } =
+    useGameStore();
 
   useEffect(() => {
-    if (lastMessage) {
-      switch (lastMessage.type) {
-        case "gameState":
-          setPlayers(lastMessage.players);
-          setPhase(lastMessage.phase);
-          setTimeLeft(lastMessage.timeLeft);
-          break;
-        case "chat":
-          addMessage(lastMessage);
-          break;
-        default:
-          console.log("Unknown message type:", lastMessage.type);
+    // Initialize WebSocket connection
+    const websocket = new WebSocket(
+      `ws://localhost:8080/ws/game?gameId=${gameId}`
+    );
+
+    websocket.onopen = () => {
+      console.log("WebSocket Connected");
+      // Send join game message
+      websocket.send(
+        JSON.stringify({
+          type: "join_game",
+          gameId,
+          address,
+          username: localStorage.getItem("username") || "Anonymous",
+        })
+      );
+    };
+
+    websocket.onmessage = async (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.type === "game_state") {
+        setPhase(data.game.phase);
+        setPlayers(data.game.players);
+
+        // If game has started, get player's role
+        if (data.game.phase !== "JOINING" && address) {
+          const playerUuid = localStorage.getItem("playerUuid");
+          if (playerUuid) {
+            const startResponse = await fetch(
+              `http://localhost:8080/api/game/start/${gameId}`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ address, playerUuid }),
+              }
+            );
+            const startData = await startResponse.json();
+            if (startData.yourRole) {
+              setYourRole(startData.yourRole);
+            }
+          }
+        }
+        setIsLoading(false);
+      } else if (data.type === "error") {
+        setErrorMessage(data.message);
+        setIsLoading(false);
       }
-    }
-  }, [lastMessage, setPlayers, setPhase, setTimeLeft, addMessage]);
+    };
 
-  const handleVote = (playerId: string) => {
-    sendMessage({
-      type: "vote",
-      playerId,
-    });
-  };
+    websocket.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      setErrorMessage("Failed to connect to game server");
+      setIsLoading(false);
+    };
 
-  const handleNightAction = (targetId: string) => {
-    sendMessage({
-      type: "nightAction",
-      targetId,
-    });
-  };
+    websocket.onclose = () => {
+      console.log("WebSocket Disconnected");
+    };
 
-  const handleChatMessage = (content: string) => {
-    sendMessage({
-      type: "chat",
-      content,
-    });
-  };
+    // Cleanup on unmount
+    return () => {
+      if (websocket.readyState === WebSocket.OPEN) {
+        websocket.close();
+      }
+    };
+  }, [gameId, address, setPhase, setPlayers, setYourRole]);
 
-  if (error) {
-    return <div className="error-message">{error}</div>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#FFF5E6] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#8B7355]"></div>
+      </div>
+    );
   }
 
-  if (!isConnected) {
-    return <div className="loading">Connecting to game server...</div>;
+  if (errorMessage) {
+    return (
+      <div className="min-h-screen bg-[#FFF5E6] flex items-center justify-center">
+        <div className="bg-white p-8 rounded-xl shadow-lg text-center">
+          <h2 className="text-2xl font-bold text-[#8B7355] mb-4">Error</h2>
+          <p className="text-[#6B5B4E]">{errorMessage}</p>
+          <button
+            onClick={() => router.push("/lobby")}
+            className="mt-4 bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-2 px-4 rounded-lg"
+          >
+            Return to Lobby
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex justify-end mb-6">
-          <ConnectKitButton />
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Game Board Section */}
-          <div className="lg:col-span-2">
-            <div className="bg-gray-800 rounded-lg shadow-xl p-6 mb-6">
-              <GameBoard
-                players={players}
-                roles={{}}
-                timeLeft={timeLeft}
-                phase={currentPhase}
-              />
-            </div>
-          </div>
+    <div className="min-h-screen bg-[#FFF5E6] p-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-xl p-8 shadow-lg border-2 border-[#EADBC8]">
+          <h1 className="text-3xl font-bold text-[#8B7355] mb-6">Game Room</h1>
 
-          {/* Right Sidebar */}
-          <div className="space-y-6">
-            {/* Phase Actions */}
-            <div className="bg-gray-800 rounded-lg shadow-xl p-6">
-              {currentPhase === "day" ? (
-                <VotingPanel
-                  players={players}
-                  onVote={handleVote}
-                  timeLeft={timeLeft}
-                />
-              ) : (
-                <NightActions
-                  role="werewolf"
-                  players={players}
-                  onAction={handleNightAction}
-                  timeLeft={timeLeft}
-                />
-              )}
+          {phase === "JOINING" ? (
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-[#8B7355] mb-4">
+                Waiting for Players
+              </h2>
+              <p className="text-[#6B5B4E] mb-4">
+                Current Players:{" "}
+                {typeof players === "number" ? players : players.length} / 4
+              </p>
+              <div className="animate-pulse text-5xl mb-4">🎮</div>
+              <p className="text-[#6B5B4E]">
+                The game will start automatically when all players join
+              </p>
             </div>
-
-            {/* Chat Section */}
-            <div className="bg-gray-800 rounded-lg shadow-xl p-6">
-              <ChatBox
-                messages={messages.map((msg) => ({
-                  id: Date.now().toString(),
-                  sender: "Player",
-                  content: msg,
-                  timestamp: new Date(),
-                }))}
-                onSendMessage={handleChatMessage}
-                isNightPhase={currentPhase === "night"}
-                currentRole="villager"
-              />
+          ) : (
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-[#8B7355] mb-4">
+                Game in Progress
+              </h2>
+              <p className="text-[#6B5B4E] mb-4">
+                Your Role: {yourRole || "Loading..."}
+              </p>
+              <p className="text-[#6B5B4E]">Phase: {phase}</p>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

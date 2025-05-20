@@ -1,58 +1,47 @@
 import { create } from "zustand";
 
 interface Player {
-  id: string;
-  name: string;
-  role: string;
-  isAlive: boolean;
+  groveId: string;
+  uuid: string;
+  committed: boolean;
 }
 
 interface GameState {
   gameId: string | null;
+  phase: "JOINING" | "NIGHT" | "DAY" | "ENDED";
   players: Player[];
-  currentPhase: "day" | "night";
-  currentRound: number;
-  timeLeft: number;
-  messages: string[];
+  roles: string[];
+  yourRole: string | null;
+  isReady: boolean;
   setGameId: (id: string) => void;
+  setPhase: (phase: "JOINING" | "NIGHT" | "DAY" | "ENDED") => void;
   setPlayers: (players: Player[]) => void;
-  setPhase: (phase: "day" | "night") => void;
-  setRound: (round: number) => void;
-  setTimeLeft: (time: number) => void;
-  addMessage: (message: string) => void;
+  setRoles: (roles: string[]) => void;
+  setYourRole: (role: string) => void;
+  setReady: (ready: boolean) => void;
   resetGame: () => void;
 }
 
 export const useGameStore = create<GameState>((set) => ({
   gameId: null,
+  phase: "JOINING",
   players: [],
-  currentPhase: "day",
-  currentRound: 1,
-  timeLeft: 0,
-  messages: [],
-
+  roles: [],
+  yourRole: null,
+  isReady: false,
   setGameId: (id) => set({ gameId: id }),
-
+  setPhase: (phase) => set({ phase }),
   setPlayers: (players) => set({ players }),
-
-  setPhase: (phase) => set({ currentPhase: phase }),
-
-  setRound: (round) => set({ currentRound: round }),
-
-  setTimeLeft: (time) => set({ timeLeft: time }),
-
-  addMessage: (message) =>
-    set((state) => ({
-      messages: [...state.messages, message],
-    })),
-
+  setRoles: (roles) => set({ roles }),
+  setYourRole: (role) => set({ yourRole: role }),
+  setReady: (ready) => set({ isReady: ready }),
   resetGame: () =>
     set({
       gameId: null,
+      phase: "JOINING",
       players: [],
-      currentPhase: "day",
-      currentRound: 1,
-      timeLeft: 0,
-      messages: [],
+      roles: [],
+      yourRole: null,
+      isReady: false,
     }),
 }));

@@ -1,19 +1,17 @@
 "use client";
 
 import { WagmiProvider, createConfig, http } from "wagmi";
-import { mainnet } from "wagmi/chains";
+import { lens } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConnectKitProvider, getDefaultConfig } from "connectkit";
 
 const config = createConfig(
   getDefaultConfig({
     // Your dApps chains
-    chains: [mainnet],
+    chains: [lens],
     transports: {
       // RPC URL for each chain
-      [mainnet.id]: http(
-        `https://eth-mainnet.g.alchemy.com/v2/${process.env.NEXT_PUBLIC_ALCHEMY_ID}`
-      ),
+      [lens.id]: http(`${process.env.NEXT_PUBLIC_ALCHEMY_ID}`),
     },
 
     // Required API Keys
@@ -22,12 +20,12 @@ const config = createConfig(
       "c93d50441c91d42c24f9967d79562d08",
 
     // Required App Info
-    appName: "Your App Name",
+    appName: "Lens Game",
 
     // Optional App Info
-    appDescription: "Your App Description",
-    appUrl: "https://family.co", // your app's url
-    appIcon: "https://family.co/logo.png", // your app's icon, no bigger than 1024x1024px (max. 1MB)
+    appDescription: "A game built on Lens Protocol",
+    appUrl: "https://lens-game.vercel.app", // your app's url
+    appIcon: "https://lens-game.vercel.app/logo.png", // your app's icon, no bigger than 1024x1024px (max. 1MB)
   })
 );
 

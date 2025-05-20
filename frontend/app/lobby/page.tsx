@@ -5,13 +5,10 @@ import { useRouter } from "next/navigation";
 import { ConnectKitButton } from "connectkit";
 import { useAccount } from "wagmi";
 import Image from "next/image";
+import { getGroveUpload } from "../../utils/grove";
+import { useUserData } from "../../hooks/useUserData";
+import { useUserStore } from "../../store/userStore";
 // import LensProfileCard from "../components/LensProfileCard";
-
-interface LensProfile {
-  handle: string;
-
-  picture: string;
-}
 
 // // Mock data for public games - replace with actual data from your backend
 // const mockPublicGames = [
@@ -38,12 +35,36 @@ interface LensProfile {
 //   },
 // ];
 
+// Function to generate UUID
+const generateUUID = () => {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 export default function LobbyPage() {
   const router = useRouter();
   const { address, isConnected } = useAccount();
+  const { isLoading: isUserDataLoading, error: userDataError } =
+    useUserData(address);
+  const { username, groveId, setUsername } = useUserStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [lensProfile, setLensProfile] = useState<LensProfile | null>(null);
   const [isLensProfileLoading, setIsLensProfileLoading] = useState(false);
+  const [liveGames, setLiveGames] = useState<
+    Array<{
+      gameId: string;
+      players: number;
+      maxPlayers: number;
+      status: string;
+      createdAt: string;
+    }>
+  >([]);
+  const [lensProfile, setLensProfile] = useState<{
+    handle: string;
+    picture: string;
+  } | null>(null);
   const [gameStatus, setGameStatus] = useState<{
     hasActiveGame: boolean;
     gameId: string | null;
@@ -53,16 +74,21 @@ export default function LobbyPage() {
     gameId: null,
     availableSlots: 0,
   });
+  const [customUsername, setCustomUsername] = useState("");
 
   useEffect(() => {
     if (isConnected && address) {
-      fetchLensProfile();
       checkGameStatus();
+      fetchLiveGames();
+      if (!username) {
+        fetchLensProfile();
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isConnected, address]);
+  }, [isConnected, address, username]);
 
   const fetchLensProfile = async () => {
+    if (!address) return;
     setIsLensProfileLoading(true);
     try {
       const response = await fetch(
@@ -86,23 +112,73 @@ export default function LobbyPage() {
       if (data.identity) {
         setLensProfile({
           handle: data.identity,
-
           picture: data.avatar,
         });
         console.log(lensProfile, "lensProfile");
-        setIsLensProfileLoading(false);
       } else {
         console.log("No Lens profile found for this address");
       }
     } catch (error) {
       console.error("Error fetching Lens profile:", error);
+    } finally {
+      setIsLensProfileLoading(false);
+    }
+  };
+
+  const fetchLiveGames = async () => {
+    try {
+      const response = await fetch("http://localhost:8080/api/game/live");
+      const data = await response.json();
+      if (data.games) {
+        setLiveGames(data.games);
+      }
+    } catch (error) {
+      console.error("Error fetching live games:", error);
+    }
+  };
+
+  const handleCreatePlayerAccount = async () => {
+    if (!address) return;
+    setIsLoading(true);
+    try {
+      // First create Grove ID
+      const groveResponse = await getGroveUpload(address);
+
+      if (groveResponse) {
+        // Save user data to server
+        const saveResponse = await fetch(
+          "http://localhost:8080/api/user/create",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              address,
+              groveId: groveResponse,
+              username: lensProfile ? lensProfile.handle : customUsername,
+              avatar: lensProfile ? lensProfile.picture : "/person.png",
+            }),
+          }
+        );
+
+        const saveData = await saveResponse.json();
+        if (saveData.success) {
+          setUsername(lensProfile ? lensProfile.handle : customUsername);
+          console.log("Player account created successfully");
+        }
+      }
+    } catch (error) {
+      console.error("Error creating player account:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const checkGameStatus = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/game/status?address=${address}`);
+      const response = await fetch(`http://localhost:8080/api/game/status`);
       const data = await response.json();
 
       setGameStatus({
@@ -124,12 +200,40 @@ export default function LobbyPage() {
   const handleCreateGame = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/game/create", {
+      // First check if there's an existing game
+      const statusResponse = await fetch(
+        `http://localhost:8080/api/game/status`
+      );
+      const statusData = await statusResponse.json();
+
+      if (statusData.hasActiveGame) {
+        // If there's an active game, try to join it
+        const joinResponse = await fetch(
+          "http://localhost:8080/api/game/join",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ gameId: statusData.gameId, address }),
+          }
+        );
+        const joinData = await joinResponse.json();
+
+        if (joinData.success) {
+          router.push(`/game/${statusData.gameId}`);
+          return;
+        }
+      }
+
+      // If no active game or couldn't join, create a new game
+      const newGameId = generateUUID();
+      const response = await fetch("http://localhost:8080/api/game/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ address }),
+        body: JSON.stringify({ address, gameId: newGameId, groveId }),
       });
       const data = await response.json();
 
@@ -137,7 +241,7 @@ export default function LobbyPage() {
         router.push(`/game/${data.gameId}`);
       }
     } catch (error) {
-      console.error("Error creating game:", error);
+      console.error("Error handling game creation/joining:", error);
     } finally {
       setIsLoading(false);
     }
@@ -146,20 +250,73 @@ export default function LobbyPage() {
   const handleJoinGame = async (gameId: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/game/join", {
+      if (!address || !groveId) {
+        console.error("Address or Grove ID is missing");
+        return;
+      }
+
+      const response = await fetch("http://localhost:8080/api/game/join", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ gameId, address }),
+        body: JSON.stringify({
+          gameId,
+          address,
+          groveId,
+          username,
+        }),
       });
+
       const data = await response.json();
 
-      if (data.success) {
+      if (data.error) {
+        console.error("Error joining game:", data.error);
+        return;
+      }
+
+      if (data.newUuid) {
+        // Store the player's UUID in localStorage or state management
+        localStorage.setItem("playerUuid", data.newUuid);
+        // Redirect to the game page
         router.push(`/game/${gameId}`);
       }
     } catch (error) {
       console.error("Error joining game:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGroveCreate = async () => {
+    if (!address) return;
+    setIsLoading(true);
+    try {
+      const groveResponse = await getGroveUpload(address);
+
+      if (groveResponse) {
+        // Save grove ID to server
+        const saveResponse = await fetch(
+          "http://localhost:8080/api/grove/save",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              address,
+              groveId: groveResponse,
+            }),
+          }
+        );
+
+        const saveData = await saveResponse.json();
+        if (saveData.success) {
+          console.log("Grove created successfully:", groveResponse);
+        }
+      }
+    } catch (error) {
+      console.error("Error creating grove:", error);
     } finally {
       setIsLoading(false);
     }
@@ -179,19 +336,26 @@ export default function LobbyPage() {
         <div className="flex justify-center items-center min-h-[80vh]">
           <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border-4 border-[#EADBC8] p-8 relative overflow-hidden">
             {/* Loading overlay */}
-            {(isLensProfileLoading || isLoading) && (
+            {(isUserDataLoading || isLoading) && (
               <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded-3xl">
                 <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#8B7355]"></div>
               </div>
             )}
 
+            {/* Error message */}
+            {userDataError && (
+              <div className="text-red-500 text-center mb-4">
+                {userDataError}
+              </div>
+            )}
+
             {/* Profile or No Profile */}
-            {lensProfile ? (
+            {username ? (
               <div className="flex flex-col items-center">
                 <div className="relative mb-4">
                   <Image
-                    src={lensProfile.picture || "/person.png"}
-                    alt={lensProfile.handle}
+                    src="/person.png"
+                    alt={username}
                     className="w-24 h-24 rounded-full border-4 border-[#8B7355] bg-[#FFF5E6] object-cover shadow"
                     width={96}
                     height={96}
@@ -205,7 +369,7 @@ export default function LobbyPage() {
                   />
                 </div>
                 <h2 className="text-3xl font-extrabold text-[#8B7355] mb-1">
-                  {lensProfile.handle}
+                  {username}
                 </h2>
                 <p className="text-[#6B5B4E] mb-4">
                   Welcome to Lens Game Lobby!
@@ -236,12 +400,22 @@ export default function LobbyPage() {
                     <p className="mb-4 text-[#6B5B4E]">
                       Create a new game and wait for others to join!
                     </p>
-                    <button
-                      onClick={handleCreateGame}
-                      className="bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-3 px-8 rounded-xl transition-colors shadow-lg"
-                    >
-                      Create New Game
-                    </button>
+                    <div className="space-y-4">
+                      {!groveId && (
+                        <button
+                          onClick={handleGroveCreate}
+                          className="bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-3 px-8 rounded-xl transition-colors shadow-lg w-full"
+                        >
+                          Create Grove ID
+                        </button>
+                      )}
+                      <button
+                        onClick={handleCreateGame}
+                        className="bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-3 px-8 rounded-xl transition-colors shadow-lg w-full"
+                      >
+                        Create New Game
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -254,25 +428,133 @@ export default function LobbyPage() {
                   height={96}
                   className="w-24 h-24 mb-4 opacity-80"
                 />
-                <div className="text-5xl mb-2">😢</div>
-                <h2 className="text-2xl font-bold text-[#8B7355] mb-2">
-                  Ohhh little boy...
-                </h2>
-                <p className="text-[#6B5B4E] mb-4">
-                  You don&apos;t have a Lens ID yet!
-                </p>
-                <a
-                  href="https://claim.lens.xyz"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-2 px-8 rounded-xl transition-colors shadow"
-                >
-                  Get Your Lens ID Now
-                </a>
+                {isLensProfileLoading ? (
+                  <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#8B7355]"></div>
+                ) : lensProfile ? (
+                  <>
+                    <div className="text-5xl mb-2">🎮</div>
+                    <h2 className="text-2xl font-bold text-[#8B7355] mb-2">
+                      Welcome, {lensProfile.handle}!
+                    </h2>
+                    <p className="text-[#6B5B4E] mb-4">
+                      Create your player account to start playing
+                    </p>
+                    <button
+                      onClick={handleCreatePlayerAccount}
+                      disabled={isLoading}
+                      className="inline-block bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-2 px-8 rounded-xl transition-colors shadow disabled:opacity-50"
+                    >
+                      {isLoading
+                        ? "Creating Account..."
+                        : "Create Player Account"}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-5xl mb-2">😢</div>
+                    <h2 className="text-2xl font-bold text-[#8B7355] mb-2">
+                      No Lens ID? No Problem!
+                    </h2>
+                    <p className="text-[#6B5B4E] mb-4">
+                      Enter a username to start playing
+                    </p>
+                    <div className="w-full max-w-md space-y-4">
+                      <input
+                        type="text"
+                        value={customUsername}
+                        onChange={(e) => setCustomUsername(e.target.value)}
+                        placeholder="Enter your username"
+                        className="w-full px-4 py-2 rounded-lg border-2 border-[#EADBC8] focus:border-[#8B7355] focus:outline-none"
+                      />
+                      <button
+                        onClick={handleCreatePlayerAccount}
+                        disabled={isLoading || !customUsername.trim()}
+                        className="w-full bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-2 px-8 rounded-xl transition-colors shadow disabled:opacity-50"
+                      >
+                        {isLoading
+                          ? "Creating Account..."
+                          : "Create Player Account"}
+                      </button>
+                      <div className="text-center">
+                        <p className="text-sm text-[#6B5B4E] mb-2">
+                          Or get a Lens ID for more features:
+                        </p>
+                        <a
+                          href="https://claim.lens.xyz"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#8B7355] hover:text-[#6B5B4E] underline"
+                        >
+                          Get Your Lens ID Now
+                        </a>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
         </div>
+
+        {/* Live Games Section */}
+        {username && (
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold mb-4 text-[#8B7355]">
+              Live Games
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {liveGames.length > 0 ? (
+                liveGames.map((game) => (
+                  <div
+                    key={game.gameId}
+                    className="bg-white rounded-xl p-4 shadow-lg border-2 border-[#EADBC8] hover:border-[#8B7355] transition-colors"
+                  >
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-bold text-[#8B7355]">
+                        Game #{game.gameId.slice(0, 8)}
+                      </h3>
+                      <span
+                        className={`px-2 py-1 rounded-full text-sm ${
+                          game.status === "waiting"
+                            ? "bg-yellow-100 text-yellow-800"
+                            : game.status === "in_progress"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {game.status}
+                      </span>
+                    </div>
+                    <div className="text-sm text-[#6B5B4E] mb-3">
+                      <p>
+                        Players: {game.players}/{game.maxPlayers}
+                      </p>
+                      <p>
+                        Created: {new Date(game.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleJoinGame(game.gameId)}
+                      disabled={game.players >= game.maxPlayers}
+                      className="w-full bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-2 px-4 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {game.players >= game.maxPlayers
+                        ? "Game Full"
+                        : "Join Game"}
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-8 bg-white rounded-xl border-2 border-[#EADBC8]">
+                  <p className="text-[#6B5B4E]">No live games available</p>
+                  <p className="text-sm text-[#8B7355] mt-2">
+                    Create a new game to start playing!
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Quick Rules Section */}
         <div className="mt-8 bg-white p-6 rounded-lg border-2 border-[#D4C4B7] shadow-md">
