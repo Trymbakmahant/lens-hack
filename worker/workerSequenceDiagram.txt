@@ -1,0 +1,56 @@
+sequenceDiagram
+    actor Client
+    participant Worker
+    participant GAMES_KV as "GAMES (KV Store)"
+    participant GroveAPI as "Grove Storage API"
+
+    Client->>Worker: POST / (gameId, groveId, uuid)
+
+    Worker->>GAMES_KV: get(gameId)
+    GAMES_KV-->>Worker: game (or null)
+
+    alt game is null (First player, new game)
+        Note over Worker: New game creation flow
+        Worker->>GroveAPI: getState(groveId)
+        GroveAPI-->>Worker: { state: 0 } (Grove state is ready for new player)
+        Worker-->>Worker: Generate newUuid, determine wherewolfIndex
+        Worker->>GAMES_KV: put(gameId, { players: [[groveId, newUuid, false]], wherewolfIndex })
+        Worker-->>Client: Response: { uuid: newUuid }
+    else game exists
+        Note over Worker: Game exists, processing player
+        alt Player not found in game.players (New player joining existing game)
+            Note over Worker: New player joining (game not full)
+            Worker->>GroveAPI: getState(groveId)
+            GroveAPI-->>Worker: { state: 0 } (Grove state is ready for new player)
+            Worker-->>Worker: Generate newUuid
+            Worker-->>Worker: Add [groveId, newUuid, false] to game.players list
+            Worker->>GAMES_KV: put(gameId, { players: updatedPlayers, wherewolfIndex: game.wherewolfIndex })
+            Worker-->>Client: Response: { uuid: newUuid }
+        else Player found in game.players AND player's stored UUID matches input uuid
+            Note over Worker: Existing player, UUID is valid
+
+            alt All players have committed AND current time > game.revealTime
+                Note over Worker: Game ended, reveal time has passed
+                Worker-->>Worker: wherewolfGroveId = game.players[game.wherewolfIndex][0]
+                Worker-->>Client: Response: { wherewolfGroveId }
+            else Game ongoing OR reveal time not yet passed
+                Note over Worker: Game is active or awaiting reveal
+                opt Player has not yet committed (player[2] is false)
+                    Note over Worker: Player is committing their state
+                    Worker->>GroveAPI: getState(groveId)
+                    GroveAPI-->>Worker: { state: 1 } (Grove state shows player has committed)
+                    Worker-->>Worker: Update player's status: player[2] = true
+                end
+
+                opt game.revealTime is not set AND All players have now committed
+                    Note over Worker: All players committed, setting reveal time
+                    Worker-->>Worker: Calculate revealTime = currentTime + GAME_DURATION
+                    Worker->>GAMES_KV: put(gameId, { players, wherewolfIndex, revealTime })
+                    Note over Worker: Game object in memory is updated with new revealTime for response
+                end
+                
+                Worker-->>Worker: Determine isWherewolf = (playerIndex === game.wherewolfIndex)
+                Worker-->>Client: Response: { isWherewolf, revealTime: game.revealTime }
+            end
+        end
+    end
