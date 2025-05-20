@@ -1,5 +1,11 @@
 # Wherewolf for Lens Spring hackathon
 
+
+## 📺 Demo Video
+
+[![Watch the video](https://img.youtube.com/vi/zvrBk__rBxw/maxresdefault.jpg)](https://youtu.be/zvrBk__rBxw)
+
+
 ## Lens components used
 - Grove for storage of some files
 - Lens chain for messaging
