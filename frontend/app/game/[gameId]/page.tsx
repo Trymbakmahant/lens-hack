@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
 import { useGameStore } from "@/store/gameStore";
+import { config } from "@/config/env";
 
 export default function GameLobby() {
   const params = useParams();
@@ -19,9 +20,7 @@ export default function GameLobby() {
 
   useEffect(() => {
     // Initialize WebSocket connection
-    const websocket = new WebSocket(
-      `ws://localhost:8080/ws/game?gameId=${gameId}`
-    );
+    const websocket = new WebSocket(`${config.wsUrl}/ws/game?gameId=${gameId}`);
 
     websocket.onopen = () => {
       console.log("WebSocket Connected");
@@ -50,7 +49,7 @@ export default function GameLobby() {
           const playerUuid = localStorage.getItem("playerUuid");
           if (playerUuid) {
             const startResponse = await fetch(
-              `http://localhost:8080/api/game/start/${gameId}`,
+              `${config.backendUrl}/api/game/start/${gameId}`,
               {
                 method: "POST",
                 headers: {

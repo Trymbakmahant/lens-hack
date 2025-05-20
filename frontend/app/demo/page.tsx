@@ -5,6 +5,7 @@ import GameBoard from "@/components/GameBoard";
 import VotingPanel from "@/components/VotingPanel";
 import ChatBox from "@/components/ChatBox";
 import NightActions from "@/components/NightActions";
+import { config } from "@/config/env";
 
 interface Player {
   id: string;
@@ -93,6 +94,37 @@ export default function DemoPage() {
       setWinner("Werewolves");
     }
   }, [players]);
+
+  // Simulate WebSocket connection
+  useEffect(() => {
+    const ws = new WebSocket(`${config.wsUrl}/ws/game?gameId=demo`);
+
+    ws.onopen = () => {
+      console.log("WebSocket Connected");
+      addMessage({
+        id: Date.now().toString(),
+        sender: "System",
+        content: "Connected to game server",
+        timestamp: new Date(),
+      });
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket Disconnected");
+      addMessage({
+        id: Date.now().toString(),
+        sender: "System",
+        content: "Disconnected from game server",
+        timestamp: new Date(),
+      });
+    };
+
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+  }, []);
 
   const handleVote = (playerId: string) => {
     const updatedPlayers = players.map((player) =>
