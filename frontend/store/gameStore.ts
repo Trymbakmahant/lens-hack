@@ -4,6 +4,10 @@ interface Player {
   groveId: string;
   uuid: string;
   committed: boolean;
+  id: string;
+  name: string;
+  role: string;
+  isAlive: boolean;
 }
 
 interface GameState {
