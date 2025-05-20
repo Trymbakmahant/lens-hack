@@ -1,0 +1,17 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g stroke="#8B7355" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Clover top -->
+    <path d="M60 30
+             Q40 10, 30 30
+             Q10 60, 60 60
+             Q110 60, 90 30
+             Q80 10, 60 30"/>
+    <!-- Smile -->
+    <path d="M50 65 Q60 75 70 65"/>
+    <!-- Left eye -->
+    <path d="M48 55 Q52 53 54 56"/>
+    <!-- Right eye -->
+    <path d="M66 56 Q68 53 72 55"/>
+    <!-- Clover stem -->
+    <path d="M60 60 L60 100"/>
+    <!-- Left root -->

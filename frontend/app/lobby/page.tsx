@@ -1,64 +1,166 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ConnectKitButton } from "connectkit";
+import { useAccount } from "wagmi";
+// import LensProfileCard from "../components/LensProfileCard";
 
-// Mock data for public games - replace with actual data from your backend
-const mockPublicGames = [
-  {
-    id: "abc123",
-    name: "Village Night",
-    players: 4,
-    maxPlayers: 8,
-    status: "waiting",
-  },
-  {
-    id: "def456",
-    name: "Wolf Pack",
-    players: 6,
-    maxPlayers: 10,
-    status: "waiting",
-  },
-  {
-    id: "ghi789",
-    name: "Mystery Manor",
-    players: 3,
-    maxPlayers: 8,
-    status: "waiting",
-  },
-];
+interface LensProfile {
+  handle: string;
+
+  picture: string;
+}
+
+// // Mock data for public games - replace with actual data from your backend
+// const mockPublicGames = [
+//   {
+//     id: "abc123",
+//     name: "Village Night",
+//     players: 4,
+//     maxPlayers: 8,
+//     status: "waiting",
+//   },
+//   {
+//     id: "def456",
+//     name: "Wolf Pack",
+//     players: 6,
+//     maxPlayers: 10,
+//     status: "waiting",
+//   },
+//   {
+//     id: "ghi789",
+//     name: "Mystery Manor",
+//     players: 3,
+//     maxPlayers: 8,
+//     status: "waiting",
+//   },
+// ];
 
 export default function LobbyPage() {
   const router = useRouter();
-  const [gameId, setGameId] = useState("");
-  const [playerName, setPlayerName] = useState("");
-  const [selectedRole, setSelectedRole] = useState("villager");
-  const [gameSettings, setGameSettings] = useState({
-    maxPlayers: 8,
-    roles: {
-      wolves: 2,
-      detectives: 1,
-      doctors: 1,
-    },
-    isPublic: true,
-    gameName: "",
+  const { address, isConnected } = useAccount();
+  const [isLoading, setIsLoading] = useState(false);
+  const [lensProfile, setLensProfile] = useState<LensProfile | null>(null);
+  const [isLensProfileLoading, setIsLensProfileLoading] = useState(false);
+  const [gameStatus, setGameStatus] = useState<{
+    hasActiveGame: boolean;
+    gameId: string | null;
+    availableSlots: number;
+  }>({
+    hasActiveGame: false,
+    gameId: null,
+    availableSlots: 0,
   });
 
-  const handleCreateGame = () => {
-    const newGameId = Math.random().toString(36).substring(2, 8);
-    router.push(`/game/${newGameId}`);
-  };
+  useEffect(() => {
+    if (isConnected && address) {
+      fetchLensProfile();
+      checkGameStatus();
+    }
+  }, [isConnected, address]);
 
-  const handleJoinGame = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (gameId && playerName) {
-      router.push(`/game/${gameId}`);
+  const fetchLensProfile = async () => {
+    setIsLensProfileLoading(true);
+    try {
+      const response = await fetch(
+        `https://api.web3.bio/profile/lens/${address}`,
+        {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+      console.log(data, "data");
+
+      if (!response.ok) {
+        console.error("Error fetching profile:", data.error);
+        return;
+      }
+
+      if (data.identity) {
+        setLensProfile({
+          handle: data.identity,
+
+          picture: data.avatar,
+        });
+        console.log(lensProfile, "lensProfile");
+        setIsLensProfileLoading(false);
+      } else {
+        console.log("No Lens profile found for this address");
+      }
+    } catch (error) {
+      console.error("Error fetching Lens profile:", error);
     }
   };
 
-  const handleJoinPublicGame = (gameId: string) => {
-    router.push(`/game/${gameId}`);
+  const checkGameStatus = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/game/status?address=${address}`);
+      const data = await response.json();
+
+      setGameStatus({
+        hasActiveGame: data.hasActiveGame,
+        gameId: data.gameId,
+        availableSlots: data.availableSlots,
+      });
+
+      if (data.hasActiveGame && data.availableSlots > 0) {
+        handleJoinGame(data.gameId);
+      }
+    } catch (error) {
+      console.error("Error checking game status:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateGame = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/game/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ address }),
+      });
+      const data = await response.json();
+
+      if (data.gameId) {
+        router.push(`/game/${data.gameId}`);
+      }
+    } catch (error) {
+      console.error("Error creating game:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleJoinGame = async (gameId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/game/join", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ gameId, address }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        router.push(`/game/${gameId}`);
+      }
+    } catch (error) {
+      console.error("Error joining game:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -72,210 +174,95 @@ export default function LobbyPage() {
           <ConnectKitButton />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Create Game Section */}
-          <div className="bg-white p-6 rounded-lg border-2 border-[#D4C4B7] shadow-md">
-            <h2 className="text-2xl font-bold mb-6 text-[#8B7355]">
-              Create New Game
-            </h2>
-
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-[#6B5B4E] mb-2">
-                  Game Name
-                </label>
-                <input
-                  type="text"
-                  value={gameSettings.gameName}
-                  onChange={(e) =>
-                    setGameSettings({
-                      ...gameSettings,
-                      gameName: e.target.value,
-                    })
-                  }
-                  placeholder="Enter Game Name"
-                  className="w-full p-2 border-2 border-[#D4C4B7] rounded-lg bg-[#FFF5E6]"
-                />
+        <div className="flex justify-center items-center min-h-[80vh]">
+          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border-4 border-[#EADBC8] p-8 relative overflow-hidden">
+            {/* Loading overlay */}
+            {(isLensProfileLoading || isLoading) && (
+              <div className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 rounded-3xl">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#8B7355]"></div>
               </div>
+            )}
 
-              <div>
-                <label className="block text-sm font-medium text-[#6B5B4E] mb-2">
-                  Maximum Players
-                </label>
-                <select
-                  value={gameSettings.maxPlayers}
-                  onChange={(e) =>
-                    setGameSettings({
-                      ...gameSettings,
-                      maxPlayers: Number(e.target.value),
-                    })
-                  }
-                  className="w-full p-2 border-2 border-[#D4C4B7] rounded-lg bg-[#FFF5E6]"
-                >
-                  {[6, 8, 10, 12].map((num) => (
-                    <option key={num} value={num}>
-                      {num} Players
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#6B5B4E] mb-2">
-                  Number of Wolves
-                </label>
-                <select
-                  value={gameSettings.roles.wolves}
-                  onChange={(e) =>
-                    setGameSettings({
-                      ...gameSettings,
-                      roles: {
-                        ...gameSettings.roles,
-                        wolves: Number(e.target.value),
-                      },
-                    })
-                  }
-                  className="w-full p-2 border-2 border-[#D4C4B7] rounded-lg bg-[#FFF5E6]"
-                >
-                  {[1, 2, 3].map((num) => (
-                    <option key={num} value={num}>
-                      {num} Wolves
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#6B5B4E] mb-2">
-                  Game Visibility
-                </label>
-                <div className="flex gap-4">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      checked={gameSettings.isPublic}
-                      onChange={() =>
-                        setGameSettings({
-                          ...gameSettings,
-                          isPublic: true,
-                        })
-                      }
-                      className="form-radio text-[#8B7355]"
-                    />
-                    <span>Public</span>
-                  </label>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="radio"
-                      checked={!gameSettings.isPublic}
-                      onChange={() =>
-                        setGameSettings({
-                          ...gameSettings,
-                          isPublic: false,
-                        })
-                      }
-                      className="form-radio text-[#8B7355]"
-                    />
-                    <span>Private</span>
-                  </label>
+            {/* Profile or No Profile */}
+            {lensProfile ? (
+              <div className="flex flex-col items-center">
+                <div className="relative mb-4">
+                  <img
+                    src={lensProfile.picture || "/person.png"}
+                    alt={lensProfile.handle}
+                    className="w-24 h-24 rounded-full border-4 border-[#8B7355] bg-[#FFF5E6] object-cover shadow"
+                  />
+                  <img
+                    src="/lens.jpeg"
+                    alt="Lens Logo"
+                    className="absolute -bottom-3 -right-3 w-10 h-10 bg-white rounded-full border-2 border-[#EADBC8] p-1"
+                  />
                 </div>
+                <h2 className="text-3xl font-extrabold text-[#8B7355] mb-1">
+                  {lensProfile.handle}
+                </h2>
+                <p className="text-[#6B5B4E] mb-4">
+                  Welcome to Lens Game Lobby!
+                </p>
+                <hr className="w-2/3 border-[#EADBC8] my-4" />
+
+                {/* Game Status */}
+                {gameStatus.hasActiveGame ? (
+                  <div className="text-center">
+                    <h3 className="text-xl font-bold text-[#8B7355] mb-2">
+                      Active Game Found
+                    </h3>
+                    <p className="mb-4 text-[#6B5B4E]">
+                      Available slots: {gameStatus.availableSlots}
+                    </p>
+                    <button
+                      onClick={() => handleJoinGame(gameStatus.gameId!)}
+                      className="bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-3 px-8 rounded-xl transition-colors shadow-lg"
+                    >
+                      Join Game
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <h3 className="text-xl font-bold text-[#8B7355] mb-2">
+                      No Active Games
+                    </h3>
+                    <p className="mb-4 text-[#6B5B4E]">
+                      Create a new game and wait for others to join!
+                    </p>
+                    <button
+                      onClick={handleCreateGame}
+                      className="bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-3 px-8 rounded-xl transition-colors shadow-lg"
+                    >
+                      Create New Game
+                    </button>
+                  </div>
+                )}
               </div>
-
-              <button
-                onClick={handleCreateGame}
-                className="w-full bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md"
-              >
-                Create Game
-              </button>
-            </div>
-          </div>
-
-          {/* Join Game Section */}
-          <div className="bg-white p-6 rounded-lg border-2 border-[#D4C4B7] shadow-md">
-            <h2 className="text-2xl font-bold mb-6 text-[#8B7355]">
-              Join Existing Game
-            </h2>
-
-            <form onSubmit={handleJoinGame} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-[#6B5B4E] mb-2">
-                  Game ID
-                </label>
-                <input
-                  type="text"
-                  value={gameId}
-                  onChange={(e) => setGameId(e.target.value)}
-                  placeholder="Enter Game ID"
-                  required
-                  className="w-full p-2 border-2 border-[#D4C4B7] rounded-lg bg-[#FFF5E6]"
+            ) : (
+              <div className="flex flex-col items-center justify-center min-h-[350px]">
+                <img
+                  src="/lens-logo.svg"
+                  alt="Lens Logo"
+                  className="w-24 h-24 mb-4 opacity-80"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#6B5B4E] mb-2">
-                  Your Name
-                </label>
-                <input
-                  type="text"
-                  value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
-                  placeholder="Enter Your Name"
-                  required
-                  className="w-full p-2 border-2 border-[#D4C4B7] rounded-lg bg-[#FFF5E6]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#6B5B4E] mb-2">
-                  Preferred Role
-                </label>
-                <select
-                  value={selectedRole}
-                  onChange={(e) => setSelectedRole(e.target.value)}
-                  className="w-full p-2 border-2 border-[#D4C4B7] rounded-lg bg-[#FFF5E6]"
+                <div className="text-5xl mb-2">😢</div>
+                <h2 className="text-2xl font-bold text-[#8B7355] mb-2">
+                  Ohhh little boy...
+                </h2>
+                <p className="text-[#6B5B4E] mb-4">
+                  You don&apos;t have a Lens ID yet!
+                </p>
+                <a
+                  href="https://claim.lens.xyz"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-2 px-8 rounded-xl transition-colors shadow"
                 >
-                  <option value="villager">Villager</option>
-                  <option value="wolf">Wolf</option>
-                  <option value="detective">Detective</option>
-                  <option value="doctor">Doctor</option>
-                </select>
+                  Get Your Lens ID Now
+                </a>
               </div>
-
-              <button
-                type="submit"
-                className="w-full bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-3 px-6 rounded-lg transition-colors shadow-md"
-              >
-                Join Game
-              </button>
-            </form>
-          </div>
-        </div>
-
-        {/* Public Games Section */}
-        <div className="mt-8 bg-white p-6 rounded-lg border-2 border-[#D4C4B7] shadow-md">
-          <h2 className="text-2xl font-bold mb-6 text-[#8B7355]">
-            Public Games
-          </h2>
-          <div className="grid gap-4">
-            {mockPublicGames.map((game) => (
-              <div
-                key={game.id}
-                className="flex items-center justify-between p-4 bg-[#FFF5E6] rounded-lg border border-[#D4C4B7]"
-              >
-                <div>
-                  <h3 className="font-semibold text-[#8B7355]">{game.name}</h3>
-                  <p className="text-sm text-[#6B5B4E]">
-                    Players: {game.players}/{game.maxPlayers}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleJoinPublicGame(game.id)}
-                  className="bg-[#8B7355] hover:bg-[#6B5B4E] text-white font-bold py-2 px-4 rounded-lg transition-colors shadow-md"
-                >
-                  Join
-                </button>
-              </div>
-            ))}
+            )}
           </div>
         </div>
 
