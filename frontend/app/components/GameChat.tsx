@@ -28,7 +28,7 @@ export default function GameChat({ gameId, username }: GameChatProps) {
 
   useEffect(() => {
     // Connect to WebSocket
-    const ws = new WebSocket("ws://localhost:8080");
+    const ws = new WebSocket(`${process.env.NEXT_PUBLIC_WS_URL}/`);
     wsRef.current = ws;
 
     ws.onopen = () => {

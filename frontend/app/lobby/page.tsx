@@ -127,7 +127,9 @@ export default function LobbyPage() {
 
   const fetchLiveGames = async () => {
     try {
-      const response = await fetch("http://localhost:8080/api/game/live");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/game/live`
+      );
       const data = await response.json();
       if (data.games) {
         setLiveGames(data.games);
@@ -147,7 +149,7 @@ export default function LobbyPage() {
       if (groveResponse) {
         // Save user data to server
         const saveResponse = await fetch(
-          "http://localhost:8080/api/user/create",
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/user/create`,
           {
             method: "POST",
             headers: {
@@ -178,7 +180,9 @@ export default function LobbyPage() {
   const checkGameStatus = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/game/status`);
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/game/status`
+      );
       const data = await response.json();
 
       setGameStatus({
@@ -202,14 +206,14 @@ export default function LobbyPage() {
     try {
       // First check if there's an existing game
       const statusResponse = await fetch(
-        `http://localhost:8080/api/game/status`
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/game/status`
       );
       const statusData = await statusResponse.json();
 
       if (statusData.hasActiveGame) {
         // If there's an active game, try to join it
         const joinResponse = await fetch(
-          "http://localhost:8080/api/game/join",
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/game/join`,
           {
             method: "POST",
             headers: {
@@ -228,13 +232,16 @@ export default function LobbyPage() {
 
       // If no active game or couldn't join, create a new game
       const newGameId = generateUUID();
-      const response = await fetch("http://localhost:8080/api/game/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ address, gameId: newGameId, groveId }),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/game/create`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ address, gameId: newGameId, groveId }),
+        }
+      );
       const data = await response.json();
 
       if (data.gameId) {
@@ -255,18 +262,21 @@ export default function LobbyPage() {
         return;
       }
 
-      const response = await fetch("http://localhost:8080/api/game/join", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          gameId,
-          address,
-          groveId,
-          username,
-        }),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/game/join`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            gameId,
+            address,
+            groveId,
+            username,
+          }),
+        }
+      );
 
       const data = await response.json();
 
@@ -297,7 +307,7 @@ export default function LobbyPage() {
       if (groveResponse) {
         // Save grove ID to server
         const saveResponse = await fetch(
-          "http://localhost:8080/api/grove/save",
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/grove/save`,
           {
             method: "POST",
             headers: {

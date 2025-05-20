@@ -14,13 +14,16 @@ export const useUserData = (address: string | undefined) => {
 
     try {
       // First check if user has a grove
-      const response = await fetch("http://localhost:8080/api/grove/check", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ address }),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/grove/check`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ address }),
+        }
+      );
 
       const data = await response.json();
 
