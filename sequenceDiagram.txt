@@ -19,7 +19,7 @@ sequenceDiagram
     Frontend->>Grove: Update grove file { state: 1 }
     Frontend->>API: POST game id, grove id, uuid
     API->Grove: check { state: 1 } for grove file
-    API->>Frontend: ireturn s wherewolf
+    API->>Frontend: return is wherewolf
     Note over Player,Grove: Chat on lens group and vote by message during 5mn
     Frontend->>API: POST game id, grove id, uuid
     API->>Frontend: return wherewolf id
