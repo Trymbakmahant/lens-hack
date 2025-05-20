@@ -40,7 +40,7 @@ We use the feature that, for player verification, a grove file with an ACL relat
 - second call with uuuid checks for the grove file modification, attesting that the player has ownership to return the role (wherewolf or not)
 
 The main flow of the application is shown in the following sequence diagram:
-![sequenceDiagram](https://github.com/user-attachments/assets/817af554-247b-4bab-93cf-f8f21bc30c06)
+![sequenceDiagram](https://github.com/user-attachments/assets/10710d84-baa3-4b7d-8a91-1237d489d5ac)
 
 In the `worker` directory, another sequence diagram shows in more details the cloud function implememtation details.
 
