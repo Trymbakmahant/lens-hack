@@ -1,17 +1,18 @@
 "use client";
 
 import { WagmiProvider, createConfig, http } from "wagmi";
-import { lens } from "wagmi/chains";
+import { lens, lensTestnet } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConnectKitProvider, getDefaultConfig } from "connectkit";
 
 const config = createConfig(
   getDefaultConfig({
     // Your dApps chains
-    chains: [lens],
+    chains: [lens, lensTestnet],
     transports: {
       // RPC URL for each chain
       [lens.id]: http(`${process.env.NEXT_PUBLIC_ALCHEMY_ID}`),
+      [lensTestnet.id]: http(`${process.env.NEXT_PUBLIC_ALCHEMY_ID}`),
     },
 
     // Required API Keys

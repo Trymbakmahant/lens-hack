@@ -8,6 +8,7 @@ interface Player {
   role: string;
   isAlive: boolean;
   votes?: number;
+  isWherewolf?: boolean;
 }
 
 interface GameBoardProps {
@@ -15,6 +16,7 @@ interface GameBoardProps {
   roles: Record<string, string>;
   timeLeft: number;
   phase: "day" | "night";
+  revealTime?: number | null;
 }
 
 const GameBoard: React.FC<GameBoardProps> = ({
@@ -22,6 +24,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   roles,
   timeLeft,
   phase,
+  revealTime,
 }) => {
   return (
     <div className="game-board">
@@ -39,8 +42,13 @@ const GameBoard: React.FC<GameBoardProps> = ({
             {phase.charAt(0).toUpperCase() + phase.slice(1)} Phase
           </div>
         </div>
+        {revealTime && (
+          <div className="text-sm text-gray-400 mt-2">
+            Reveal Time: {new Date(revealTime * 1000).toLocaleTimeString()}
+          </div>
+        )}
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {players.map((player) => (
           <div
             key={player.id}
@@ -54,6 +62,9 @@ const GameBoard: React.FC<GameBoardProps> = ({
             <p className="text-sm text-gray-300">
               Role: {roles[player.id] || "Unknown"}
             </p>
+            {player.isWherewolf && (
+              <p className="text-sm text-red-400 mt-2">Werewolf</p>
+            )}
             {player.votes !== undefined && player.votes > 0 && (
               <p className="text-sm text-yellow-400 mt-2">
                 Votes: {player.votes}

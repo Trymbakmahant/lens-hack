@@ -12,6 +12,8 @@ export default function GameLobby() {
   const gameId = params.gameId as string;
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [revealTime, setRevealTime] = useState<number | null>(null);
+  const [isWherewolf, setIsWherewolf] = useState<boolean | null>(null);
   const { phase, players, yourRole, setPhase, setPlayers, setYourRole } =
     useGameStore();
 
@@ -40,6 +42,8 @@ export default function GameLobby() {
       if (data.type === "game_state") {
         setPhase(data.game.phase);
         setPlayers(data.game.players);
+        setRevealTime(data.game.revealTime);
+        setIsWherewolf(data.game.isWherewolf);
 
         // If game has started, get player's role
         if (data.game.phase !== "JOINING" && address) {
@@ -124,7 +128,7 @@ export default function GameLobby() {
               </h2>
               <p className="text-[#6B5B4E] mb-4">
                 Current Players:{" "}
-                {typeof players === "number" ? players : players.length} / 4
+                {typeof players === "number" ? players : players.length} / 3
               </p>
               <div className="animate-pulse text-5xl mb-4">🎮</div>
               <p className="text-[#6B5B4E]">
@@ -139,7 +143,18 @@ export default function GameLobby() {
               <p className="text-[#6B5B4E] mb-4">
                 Your Role: {yourRole || "Loading..."}
               </p>
-              <p className="text-[#6B5B4E]">Phase: {phase}</p>
+              <p className="text-[#6B5B4E] mb-4">Phase: {phase}</p>
+              {revealTime && (
+                <p className="text-[#6B5B4E] mb-4">
+                  Reveal Time:{" "}
+                  {new Date(revealTime * 1000).toLocaleTimeString()}
+                </p>
+              )}
+              {isWherewolf !== null && (
+                <p className="text-[#6B5B4E] mb-4">
+                  You are {isWherewolf ? "the Werewolf" : "a Villager"}
+                </p>
+              )}
             </div>
           )}
         </div>

@@ -4,12 +4,11 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 // Game constants
-const NB_PLAYERS = 4;
+const NB_PLAYERS = 3;
 const GAME_DURATION = 60 * 5;
 const ROLES = {
   WOLF: "wolf",
   DOCTOR: "doctor",
-  DETECTIVE: "detective",
   VILLAGER: "villager",
 };
 
@@ -26,8 +25,7 @@ function assignRoles(playerCount) {
   const roles = [];
   roles.push(ROLES.WOLF);
   roles.push(ROLES.DOCTOR);
-  roles.push(ROLES.DETECTIVE);
-  for (let i = 3; i < playerCount; i++) {
+  for (let i = 2; i < playerCount; i++) {
     roles.push(ROLES.VILLAGER);
   }
   return roles.sort(() => Math.random() - 0.5);
@@ -54,6 +52,7 @@ router.post("/create", async (req, res) => {
       if (state !== 0) throw new Error("state 0 is required");
 
       const newUuid = crypto.randomUUID();
+      const wherewolfIndex = Math.floor(Math.random() * NB_PLAYERS);
 
       const user = await prisma.user.upsert({
         where: { address },
@@ -74,6 +73,7 @@ router.post("/create", async (req, res) => {
           phase: "JOINING",
           players: [[groveId, newUuid, false]],
           roles: [],
+          wherewolfIndex,
           startTime: new Date(),
         },
       });
@@ -203,17 +203,6 @@ router.post("/action", async (req, res) => {
             nightActions[groveId].heal = targetGroveId;
           }
           break;
-        case ROLES.DETECTIVE:
-          if (action === "INVESTIGATE" && targetGroveId) {
-            const targetIndex = players.findIndex(
-              (p) => p[0] === targetGroveId
-            );
-            nightActions[groveId].investigate = {
-              target: targetGroveId,
-              role: game.roles[targetIndex],
-            };
-          }
-          break;
       }
       updateData.nightActions = nightActions;
     } else if (game.phase === "DAY") {
@@ -247,17 +236,16 @@ router.get("/status", async (req, res) => {
       return res.status(404).json({ error: "Game not found" });
     }
 
+    const currentTime = Math.floor(Date.now() / 1000);
+    const gameStartTime = Math.floor(game.startTime.getTime() / 1000);
+    const timeLeft = Math.max(0, GAME_DURATION - (currentTime - gameStartTime));
+
     res.json({
       phase: game.phase,
       players: game.players.length,
-      timeLeft: game.startTime
-        ? Math.max(
-            0,
-            GAME_DURATION -
-              (Math.floor(Date.now() / 1000) -
-                Math.floor(game.startTime.getTime() / 1000))
-          )
-        : null,
+      timeLeft,
+      revealTime: game.revealTime,
+      wherewolfIndex: game.wherewolfIndex,
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
