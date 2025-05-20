@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ConnectKitButton } from "connectkit";
 import { useAccount } from "wagmi";
+import Image from "next/image";
 // import LensProfileCard from "../components/LensProfileCard";
 
 interface LensProfile {
@@ -58,6 +59,7 @@ export default function LobbyPage() {
       fetchLensProfile();
       checkGameStatus();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected, address]);
 
   const fetchLensProfile = async () => {
@@ -187,15 +189,19 @@ export default function LobbyPage() {
             {lensProfile ? (
               <div className="flex flex-col items-center">
                 <div className="relative mb-4">
-                  <img
+                  <Image
                     src={lensProfile.picture || "/person.png"}
                     alt={lensProfile.handle}
                     className="w-24 h-24 rounded-full border-4 border-[#8B7355] bg-[#FFF5E6] object-cover shadow"
+                    width={96}
+                    height={96}
                   />
-                  <img
+                  <Image
                     src="/lens.jpeg"
                     alt="Lens Logo"
                     className="absolute -bottom-3 -right-3 w-10 h-10 bg-white rounded-full border-2 border-[#EADBC8] p-1"
+                    width={40}
+                    height={40}
                   />
                 </div>
                 <h2 className="text-3xl font-extrabold text-[#8B7355] mb-1">
@@ -241,9 +247,11 @@ export default function LobbyPage() {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center min-h-[350px]">
-                <img
+                <Image
                   src="/lens-logo.svg"
                   alt="Lens Logo"
+                  width={96}
+                  height={96}
                   className="w-24 h-24 mb-4 opacity-80"
                 />
                 <div className="text-5xl mb-2">😢</div>

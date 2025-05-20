@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 
 interface VotingPanelProps {
-  players: any[];
+  players: { id: string; name: string }[];
   onVote: (playerId: string) => void;
   timeLeft: number;
 }
